@@ -36,6 +36,17 @@ section {
   border-radius: 5px;
 }
 
+#logo {
+  display: flex;
+  justify-content: center;
+}
+
+#logo img {
+  width: 120px;
+  height: 100px;
+  margin: 0 auto;
+}
+
 p {
   line-height: 1.5;
 }
