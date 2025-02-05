@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title Decentralized StableCoin Engine
@@ -21,20 +22,24 @@ import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/Ree
  *    At no point should the value of all collateral be less than the value of all DSC tokens.
  *
  */
-contract DSCEngine is ReentrancyGuard{
+contract DSCEngine is ReentrancyGuard {
     ///////////////////////////////
     /////// ERRORS  ////////////
     ///////////////////////////////
     error DSCEngine__AmountMoreThanZero();
     error DSCEngine__MustBeSameLength();
     error DSCEngine__TokenNotAllowed();
+    error DSCEngine__TransferFailed();
 
     //////////////////////////////////
     /////// STATE VARIABLES  ////////////
     //////////////////////////////////
     mapping(address collateralToken => address priceFeed) private s_priceFeeds;
+    mapping(address user => mapping(address collateralToken => uint256 amount)) private s_collateralDeposited;
 
     DecentralizedStableCoin private immutable i_DSC;
+
+    event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
 
     ///////////////////////////////
     /////// MODIFIERS  ////////////
@@ -71,6 +76,7 @@ contract DSCEngine is ReentrancyGuard{
     function depositCollateralAndMistDsc() external {}
 
     /**
+     * @notice following the CEI
      * @param collateralAddress the address of the token to deposit as collateral
      * @param collateralAmount the amount of the collateral to deposit
      */
@@ -78,7 +84,13 @@ contract DSCEngine is ReentrancyGuard{
         external
         moreThanZero(collateralAmount)
         nonReentrant
-    {}
+    {
+        s_collateralDeposited[msg.sender][collateralAddress] += collateralAmount;
+        emit CollateralDeposited(msg.sender, collateralAddress, collateralAmount);
+
+        bool success = IERC20(collateralAddress).transferFrom(msg.sender, address(this), collateralAmount);
+        if (!success) revert DSCEngine__TransferFailed();
+    }
 
     // People should be able to redeem their DSC tokens for their collateral
     function redeemCollateralForDsc() external {}
