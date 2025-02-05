@@ -3,6 +3,7 @@
 pragma solidity ^0.8.18;
 
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
+import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title Decentralized StableCoin Engine
@@ -20,8 +21,7 @@ import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
  *    At no point should the value of all collateral be less than the value of all DSC tokens.
  *
  */
-
-contract DSCEngine {
+contract DSCEngine is ReentrancyGuard{
     ///////////////////////////////
     /////// ERRORS  ////////////
     ///////////////////////////////
@@ -53,11 +53,7 @@ contract DSCEngine {
     ///////////////////////////////
     /////// FUNCTIONS  ////////////
     ///////////////////////////////
-    constructor(
-        address[] memory tokenAddress,
-        address[] memory priceFeedAddress,
-        address dscAddress
-    ) {
+    constructor(address[] memory tokenAddress, address[] memory priceFeedAddress, address dscAddress) {
         if (tokenAddress.length != priceFeedAddress.length) revert DSCEngine__MustBeSameLength();
 
         for (uint256 i = 0; i < tokenAddress.length; i++) {
@@ -78,10 +74,11 @@ contract DSCEngine {
      * @param collateralAddress the address of the token to deposit as collateral
      * @param collateralAmount the amount of the collateral to deposit
      */
-    function depositCollateral(
-        address collateralAddress,
-        uint256 collateralAmount
-    ) external moreThanZero(collateralAmount) {}
+    function depositCollateral(address collateralAddress, uint256 collateralAmount)
+        external
+        moreThanZero(collateralAmount)
+        nonReentrant
+    {}
 
     // People should be able to redeem their DSC tokens for their collateral
     function redeemCollateralForDsc() external {}
