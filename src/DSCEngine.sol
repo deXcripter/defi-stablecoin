@@ -39,6 +39,7 @@ contract DSCEngine is ReentrancyGuard {
 
     uint256 private constant PRICE_FEED_USD_PRECISION = 1e10; // 10,000,000,000
     uint256 private constant PRECISION = 1e18; // 1,000,000,000,000,000,000
+    uint256 private constant LIQUIDATION_TRESHOLD = 50; // 200% overcollaterized
 
     mapping(address collateralToken => address priceFeed) private s_priceFeeds;
     mapping(address user => mapping(address collateralToken => uint256 amount)) private s_collateralDeposited;
@@ -152,7 +153,12 @@ contract DSCEngine is ReentrancyGuard {
      *  1. The total DSC minted for a user
      *  2. The total collateral a user deposited.
      */
-    function _healthFactor() private view returns (uint256) {}
+    function _healthFactor(address user) private view returns (uint256) {
+        (uint256 totalDSCMinted, uint256 collateralValueInUSD) = _getAccountInfomation(user);
+        uint256 collateralAdjustedForTreshold = (collateralValueInUSD * LIQUIDATION_TRESHOLD) / 100;
+
+        return (collateralAdjustedForTreshold * PRECISION / totalDSCMinted);
+    }
 
     function _isHealthFactorBroken(address user) internal view {
         // 1. Check if the user has enough collateral
