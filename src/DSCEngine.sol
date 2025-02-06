@@ -32,6 +32,8 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__MustBeSameLength();
     error DSCEngine__TokenNotAllowed();
     error DSCEngine__TransferFailed();
+    error DSCEngine__BreakHealthFactor(uint256 healthFactor);
+    error DSCEngine__MintFailed();
 
     //////////////////////////////////
     /////// STATE VARIABLES  ////////////
@@ -40,6 +42,7 @@ contract DSCEngine is ReentrancyGuard {
     uint256 private constant PRICE_FEED_USD_PRECISION = 1e10; // 10,000,000,000
     uint256 private constant PRECISION = 1e18; // 1,000,000,000,000,000,000
     uint256 private constant LIQUIDATION_TRESHOLD = 50; // 200% overcollaterized
+    uint256 private constant MIN_HEALTH_FACTOR = 1; // 100% overcollaterized
 
     mapping(address collateralToken => address priceFeed) private s_priceFeeds;
     mapping(address user => mapping(address collateralToken => uint256 amount)) private s_collateralDeposited;
@@ -118,7 +121,12 @@ contract DSCEngine is ReentrancyGuard {
      */
     function mintDsc(uint256 amount) external moreThanZero(amount) nonReentrant {
         s_DSCMinted[msg.sender] += amount;
-        // if they minted too much, revert.
+
+        // if adding the amount of DSC to the user's balance breaks the health factor, revert
+        _isHealthFactorBroken(msg.sender);
+
+        bool minted = i_DSC.mint(msg.sender, amount);
+        if (!minted) revert DSCEngine__MintFailed();
     }
 
     // People should be able to burn their DSC tokens
@@ -162,6 +170,10 @@ contract DSCEngine is ReentrancyGuard {
 
     function _isHealthFactorBroken(address user) internal view {
         // 1. Check if the user has enough collateral
+        uint256 healthFactor = _healthFactor(user);
+        if (healthFactor < MIN_HEALTH_FACTOR) {
+            revert DSCEngine__BreakHealthFactor(healthFactor);
+        }
     }
 
     ///////////////////////////////
