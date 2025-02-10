@@ -185,7 +185,7 @@ contract DSCEngine is ReentrancyGuard {
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
             address token = s_collateralTokens[i];
             uint256 amount = s_collateralDeposited[user][token];
-            totalCollateralValueInUSD += getUSDValue(token, amount); 
+            totalCollateralValueInUSD += getUSDValue(token, amount);
         }
 
         return totalCollateralValueInUSD;
